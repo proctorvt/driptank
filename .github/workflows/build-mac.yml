@@ -1,0 +1,42 @@
+name: Build Driptank for Mac
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build VST3, AU and standalone app (Apple Silicon + Intel)
+        run: cmake --build build --config Release -j 4 --target Driptank_VST3 Driptank_AU Driptank_Standalone
+
+      - name: Package
+        run: |
+          set -e
+          A="build/Driptank_artefacts/Release"
+          mkdir -p "dist/Driptank 63"
+          cp -R "$A/VST3/Driptank 63.vst3" "$A/AU/Driptank 63.component" "$A/Standalone/Driptank 63.app" "dist/Driptank 63/"
+          cp install_mac.command README.md "dist/Driptank 63/"
+          chmod +x "dist/Driptank 63/install_mac.command"
+          for p in "dist/Driptank 63/"*.vst3 "dist/Driptank 63/"*.component "dist/Driptank 63/"*.app; do
+            codesign --force --deep -s - "$p"
+          done
+          ditto -c -k --keepParent "dist/Driptank 63" Driptank63-mac.zip
+
+      - name: Validate the Audio Unit
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "dist/Driptank 63/Driptank 63.component" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar || true
+          auval -v aufx Drp3 Prct
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Driptank63-mac
+          path: Driptank63-mac.zip
