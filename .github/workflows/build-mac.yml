@@ -1,4 +1,4 @@
-name: Build Driptank for Mac
+name: Build plug-ins for Mac
 
 on:
   push:
@@ -10,33 +10,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build Driptank 63
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release -j 4 --target Driptank_VST3 Driptank_AU Driptank_Standalone
 
-      - name: Build VST3, AU and standalone app (Apple Silicon + Intel)
-        run: cmake --build build --config Release -j 4 --target Driptank_VST3 Driptank_AU Driptank_Standalone
+      - name: Build Brownstone 61
+        run: |
+          cmake -S brownstone -B build-brownstone -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-brownstone --config Release -j 4 --target Brownstone_VST3 Brownstone_AU Brownstone_Standalone
 
       - name: Package
         run: |
           set -e
-          A="build/Driptank_artefacts/Release"
-          mkdir -p "dist/Driptank 63"
-          cp -R "$A/VST3/Driptank 63.vst3" "$A/AU/Driptank 63.component" "$A/Standalone/Driptank 63.app" "dist/Driptank 63/"
-          cp install_mac.command README.md "dist/Driptank 63/"
-          chmod +x "dist/Driptank 63/install_mac.command"
-          for p in "dist/Driptank 63/"*.vst3 "dist/Driptank 63/"*.component "dist/Driptank 63/"*.app; do
-            codesign --force --deep -s - "$p"
-          done
-          ditto -c -k --keepParent "dist/Driptank 63" Driptank63-mac.zip
+          OUT="dist/Proctor Plug-ins"
+          D="build/Driptank_artefacts/Release"
+          B="build-brownstone/Brownstone_artefacts/Release"
+          mkdir -p "$OUT"
+          cp -R "$D/VST3/Driptank 63.vst3" "$D/AU/Driptank 63.component" "$D/Standalone/Driptank 63.app" "$OUT/"
+          cp -R "$B/VST3/Brownstone 61.vst3" "$B/AU/Brownstone 61.component" "$B/Standalone/Brownstone 61.app" "$OUT/"
+          for p in "$OUT/"*; do codesign --force --deep -s - "$p"; done
+          ditto -c -k --keepParent "$OUT" ProctorPlugins-mac.zip
 
-      - name: Validate the Audio Unit
+      - name: Validate the Audio Units
         run: |
           mkdir -p ~/Library/Audio/Plug-Ins/Components
-          cp -R "dist/Driptank 63/Driptank 63.component" ~/Library/Audio/Plug-Ins/Components/
+          cp -R "dist/Proctor Plug-ins/"*.component ~/Library/Audio/Plug-Ins/Components/
           killall -9 AudioComponentRegistrar || true
           auval -v aufx Drp3 Prct
+          auval -v aufx Brn1 Prct
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Driptank63-mac
-          path: Driptank63-mac.zip
+          name: ProctorPlugins-mac
+          path: ProctorPlugins-mac.zip
