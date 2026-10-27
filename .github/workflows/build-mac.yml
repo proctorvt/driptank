@@ -20,15 +20,22 @@ jobs:
           cmake -S brownstone -B build-brownstone -DCMAKE_BUILD_TYPE=Release
           cmake --build build-brownstone --config Release -j 4 --target Brownstone_VST3 Brownstone_AU Brownstone_Standalone
 
+      - name: Build Mudpuppy
+        run: |
+          cmake -S mudpuppy -B build-mudpuppy -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-mudpuppy --config Release -j 4 --target Mudpuppy_VST3 Mudpuppy_AU Mudpuppy_Standalone
+
       - name: Package
         run: |
           set -e
           OUT="dist/Proctor Plug-ins"
           D="build/Driptank_artefacts/Release"
           B="build-brownstone/Brownstone_artefacts/Release"
+          M="build-mudpuppy/Mudpuppy_artefacts/Release"
           mkdir -p "$OUT"
           cp -R "$D/VST3/Driptank 63.vst3" "$D/AU/Driptank 63.component" "$D/Standalone/Driptank 63.app" "$OUT/"
           cp -R "$B/VST3/Brownstone 61.vst3" "$B/AU/Brownstone 61.component" "$B/Standalone/Brownstone 61.app" "$OUT/"
+          cp -R "$M/VST3/Mudpuppy.vst3" "$M/AU/Mudpuppy.component" "$M/Standalone/Mudpuppy.app" "$OUT/"
           for p in "$OUT/"*; do codesign --force --deep -s - "$p"; done
           ditto -c -k --keepParent "$OUT" ProctorPlugins-mac.zip
 
@@ -39,6 +46,7 @@ jobs:
           killall -9 AudioComponentRegistrar || true
           auval -v aufx Drp3 Prct
           auval -v aufx Brn1 Prct
+          auval -v aufx Mdp1 Prct
 
       - uses: actions/upload-artifact@v4
         with:
